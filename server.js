@@ -7,38 +7,50 @@ app.set("json spaces", 2);
 const port = 3000;
 
 //scraper by miftah
-async function Wikipedia(query) {
-    const response = await fetch(`https://id.m.wikipedia.org/w/index.php?search=${query}`);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const contentArray = [];
-    $('div.mw-parser-output p').each((index, element) => {
-        contentArray.push($(element).text().trim());
-    });
-
-    const infoTable = [];
-    $('table.infobox tr').each((index, element) => {
-        const label = $(element).find('th.infobox-label').text().trim();
-        const value = $(element).find('td.infobox-data').text().trim() || $(element).find('td.infobox-data a').text().trim();
-        if (label && value) {
-            infoTable.push(`${label}: ${value}`);
+async function tiktoks(query) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await axios({
+        method: 'POST',
+        url: 'https://tikwm.com/api/feed/search',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Cookie': 'current_language=en',
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36'
+        },
+        data: {
+          keywords: query,
+          count: 10,
+          cursor: 0,
+          HD: 1
         }
-    });
+      });
+      const videos = response.data.data.videos;
+      if (videos.length === 0) {
+        reject("Tidak ada video ditemukan.");
+      } else {
+        const gywee = Math.floor(Math.random() * videos.length);
+        const videorndm = videos[gywee]; 
 
-    const data = {
-        title: $('title').text().trim(),
-        content: contentArray.join('\n'),
-        image: 'https:' + ($('#mw-content-text img').attr('src') || '//pngimg.com/uploads/wikipedia/wikipedia_PNG35.png'),
-        infoTable: infoTable.join('\n')
-    };
-
-    return data;
-};
+        const result = {
+          title: videorndm.title,
+          cover: videorndm.cover,
+          origin_cover: videorndm.origin_cover,
+          no_watermark: videorndm.play,
+          watermark: videorndm.wmplay,
+          music: videorndm.music
+        };
+        resolve(result);
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+    }
 
 app.get("/", async (req, res) => {
   try {
-    const result = await Wikipedia();
+    const result = await tiktoks();
     res.json(result);
   } catch (error) {
     console.error("Error:", error);
