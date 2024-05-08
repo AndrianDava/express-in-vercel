@@ -7,29 +7,38 @@ app.set("json spaces", 2);
 const port = 3000;
 
 //scraper by miftah
-async function nexLibur() {
-  const { data } = await axios.get("https://www.liburnasional.com/");
-  let libnas_content = [];
-  let $ = cheerio.load(data);
-  let result = {
-    nextLibur:
-      "Hari libur" +
-      $("div.row.row-alert > div").text().split("Hari libur")[1].trim(),
-    libnas_content,
-  };
-  $("tbody > tr > td > span > div").each(function (a, b) {
-    const summary = $(b).find("span > strong > a").text();
-    const days = $(b).find("div.libnas-calendar-holiday-weekday").text();
-    const dateMonth = $(b).find("time.libnas-calendar-holiday-datemonth").text();
-    const img = $(b).find(".libnas-holiday-calendar-img").attr("src")
-    libnas_content.push({ summary, days, dateMonth, img });
-  });
-  return result;
-}
+async function Wikipedia(query) {
+    const response = await fetch(`https://id.m.wikipedia.org/w/index.php?search=${query}`);
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    const contentArray = [];
+    $('div.mw-parser-output p').each((index, element) => {
+        contentArray.push($(element).text().trim());
+    });
+
+    const infoTable = [];
+    $('table.infobox tr').each((index, element) => {
+        const label = $(element).find('th.infobox-label').text().trim();
+        const value = $(element).find('td.infobox-data').text().trim() || $(element).find('td.infobox-data a').text().trim();
+        if (label && value) {
+            infoTable.push(`${label}: ${value}`);
+        }
+    });
+
+    const data = {
+        title: $('title').text().trim(),
+        content: contentArray.join('\n'),
+        image: 'https:' + ($('#mw-content-text img').attr('src') || '//pngimg.com/uploads/wikipedia/wikipedia_PNG35.png'),
+        infoTable: infoTable.join('\n')
+    };
+
+    return data;
+};
 
 app.get("/", async (req, res) => {
   try {
-    const result = await nexLibur();
+    const result = await Wikipedia();
     res.json(result);
   } catch (error) {
     console.error("Error:", error);
